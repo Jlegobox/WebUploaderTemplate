@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SparkMD5-Template</title>
+    <!--jquery-->
+    <script type="text/javascript" src="js/jquery-3.5.1.js"></script>
+    <!--spark-md5-->
+    <script type="text/javascript" src="js/spark-md5.js"></script>
+    <!--WebUploader-->
+    <link rel="stylesheet" type="text/css" href="css/webuploader.css">
+    <script type="text/javascript" src="js/webuploader.js"></script>
+    <script type="text/javascript" src="js/sparkMD5Template.js"></script>
+</head>
+<body>
+<div>
+    =========spark md5测试======
+</div>
+<div>
+    <h3>字符串输入测试</h3>
+    <span>请输入字符串：</span>
+    <input id="inputStr" type="text" value="请输入字符串">
+    <button type="submit" onclick="calMD5One()">calMD5One</button>
+    <div>
+        <span>MD5值(Hex)：</span>
+        <div id="MD5OneHex">等待计算</div><br>
+        <span>MD5值(Raw)：</span>
+        <div id="MD5OneRaw">等待计算</div>
+    </div>
+</div>
+<div>
+    <h3>字符串拼接测试</h3>
+    <span>请输入字符串一：</span><input id="inputStrOne" type="text" value="字符串一">
+    <br>
+    <span>请输入字符串二：</span><input id="inputStrTwo" type="text" value="字符串二">
+    <br>
+    <span>拼接后字符串：</span><span id="mergedStr"></span>
+    <br>
+    <button type="button" onclick="calMD5Two()">calMD5Two</button>
+    <div>
+        <span>字符串一MD5值(Hex)：</span><span id="inputStrOneMD5">等待计算</span><br>
+        <span>字符串二MD5值(Hex)：</span><span id="inputStrTwoMD5">等待计算</span><br>
+        <span>拼接后字符串MD5值(Hex)</span><span id="mergedStrMD5">等待计算</span><br>
+        <span>使用spark append拼接后字符串MD5值(Hex)</span><span id="mergedStrMD5Two">等待计算</span><br>
+    </div>
+</div>
+<div>
+    <h3>文件MD5计算</h3>
+    <span><cite>
+        直接导入整个文件。逻辑在点击按钮后发生作用。适合小文件。大文件会卡顿且耗时很长。
+    </cite></span>
+    <div><input id="file" type="file"></div>
+    <button type="button" onclick="calMD5Three()">calMD5Three</button>
+    <div>
+        <span>文件名称：</span><span id="fileName"></span><br>
+        <span>文件大小：</span><span id="fileSize"></span><br>
+        <span>计算花费时间：</span><span id="costTime"></span><span>秒</span><br>
+        <span>文件MD5(Hex)：</span><span id="fileMD5"></span><br>
+    </div>
+</div>
+<div>
+    <h3>大文件MD5计算</h3>
+    <span><cite>
+        通过对大文件切片的方式进行计算，提高速度
+        逻辑放在添加文件后自动进行
+    </cite></span>
+    <div><input id="file2" type="file"></div>
+    <div>
+        <span>文件名称：</span><span id="fileName2"></span><br>
+        <span>文件大小：</span><span id="fileSize2"></span><br>
+        <span>计算花费时间：</span><span id="costTime2"></span><span>秒</span><br>
+        <span>文件MD5(Hex)：</span><span id="fileMD52"></span><br>
+    </div>
+
+</div>
+
+</body>
+</html>
