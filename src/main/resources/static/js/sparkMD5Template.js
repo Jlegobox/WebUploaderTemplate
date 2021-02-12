@@ -47,7 +47,7 @@ $(
         inputFile.addEventListener('change',function (){
             var blobSlice = blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice;
             var file = this.files[0];
-            var chunkSize = 26214400; // 切片大小为1MB(并不是越小越好，应选取适当值)
+            var chunkSize = 1048576; // 切片大小为1MB(并不是越小越好，应选取适当值)
             var chunks = Math.ceil(file.size / chunkSize);
             var currentChunk = 0;
             var spark = new SparkMD5.ArrayBuffer();
