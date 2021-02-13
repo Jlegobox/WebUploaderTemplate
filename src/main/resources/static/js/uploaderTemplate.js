@@ -1,8 +1,8 @@
 // 相关变量
 var uploader; // 保存WebUploader容器
 var status; // uploader目前状态
-var uploaderToken; // 上传权限验证
-var current_location = 8;
+var uploadFileStatus; // 文件状态
+var uploadFileMD5; // 文件MD5
 
 function init_uploader(){
     createUploader()
@@ -59,37 +59,68 @@ function createUploader(){
 
     // 上传前执行，此时还未分片
     uploader.on('uploadStart',function (file){
-        alert("上传前")
-        // MD5值计算并保存
-        // MD5校验
-        // getCurrentLocation();
+        alert("解析读取文件")
+        var fileMD5;
+        var uploadFile = file.source.getSource(); // 转换为file对象，file对象继承自blob
+        var md5Promise = calMD5(uploadFile);
+
+        md5Promise.then(function (md5) {
+            alert("执行")
+            fileMD5=md5;
+            // MD5校验
+            $.ajax({
+                url:"checkUploadFile.ajax",
+                type:"POST",
+                data:{
+                    uploadFileMD5:fileMD5
+                },
+                success:function (result){
+                    // 文件在后台状态，仅记录状态
+                    uploadFileStatus = result;
+                    uploadFileMD5= fileMD5;
+                },
+                error:function (error){
+                    alert(error)
+                },
+                complete:function (){
+                    alert("complete")
+                }
+            })
+
+        })
     })
 
     // 大文件分片上传前设置,在uploadStart之后
     uploader.on('uploadBeforeSend',function (object, data, header){
-        header['lg_token'] = uploaderToken
-        alert("uploadBeforeSend")
+        alert("分片上传")
         // 计算分片的MD5值，传输完整性检验
+        var file = object.blob.source;//转换为blob对象
+        // var file = object;
+        var spark = new SparkMD5.ArrayBuffer();
+        var fileReader = new FileReader();
+        fileReader.readAsArrayBuffer(file)
+        fileReader.onload = function (e){
+            spark.append(e.target.result); // 导入二进制形式的文件内容
+            data["sliceMD5"] = spark.end();
+            data["uploadFileMD5"] = uploadFileMD5
+        }
     })
 
     // 上传成功时执行
     uploader.on('uploadSuccess', function( file ) {
         alert("success")
-        // $( '#'+file.id ).find('p.state').text('已上传');
     });
 
     // 上传失败时执行
     uploader.on('uploadError', function( file ) {
         alert("error")
-        // $( '#'+file.id ).find('p.state').text('上传出错');
     });
 
     // 上传结束（不论成功失败）时执行
     uploader.on('uploadComplete', function( file ) {
         alert("complete")
-
-        // $( '#'+file.id ).find('.progress').fadeOut();
     });
+
     $("#startUpload").on('click', function () {
         uploader.upload();
         // if (state === 'uploading') {
@@ -105,7 +136,7 @@ function createUploader(){
     });
 }
 
-function calMD5(file){
+function calMD5(file){ // 返回Promise对象
     return new Promise((resolve, reject) => {
         let chunkSize = 1048576,                             // Read in chunks of 1MB
             chunks = Math.ceil(file.size / chunkSize),
@@ -116,6 +147,7 @@ function calMD5(file){
             console.log('read chunk nr', currentChunk + 1, 'of', chunks);
             spark.append(e.target.result);                   // Append array buffer
             currentChunk++;
+            loadProcess(currentChunk/chunks);
             if (currentChunk < chunks) {
                 loadNext();
             } else {
@@ -128,31 +160,41 @@ function calMD5(file){
 
         fileReader.onerror = function (e) {
             console.warn('oops, something went wrong.');
-            reject(e);
+            reject(e); // 可能的错误地点
         };
 
         function loadNext() {
             let start = currentChunk * chunkSize,
                 end = ((start + chunkSize) >= file.size) ? file.size : start + chunkSize;
-            fileReader.readAsArrayBuffer(blobSlice(file.source.getSource(), start, end));
+            fileReader.readAsArrayBuffer(blobSlice(file, start, end));
         }
 
         loadNext();
     });
 }
 
-// 上传文件切片
-function blobSlice(blob, startByte, endByte) {
-    if (blob.slice) {
-        return blob.slice(startByte, endByte);
+// 上传文件切片,兼容不同的浏览器
+// function blobSlice(blob, startByte, endByte) { // 返回的blobSlice.call(file,start,end)中file必须为blob而不能是File
+//     return blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice;
+// }
+
+function blobSlice(blob,startByte,endByte){
+    // 使用这个函数，根据传入的blob，可以兼容传入的blob是File类型的情况
+
+    if(blob.slice){
+        return  blob.slice(startByte,endByte);
     }
     // 兼容firefox
-    if (blob.mozSlice) {
-        return blob.mozSlice(startByte, endByte);
+    if(blob.mozSlice){
+        return  blob.mozSlice(startByte,endByte);
     }
     // 兼容webkit
-    if (blob.webkitSlice) {
-        return blob.webkitSlice(startByte, endByte);
+    if(blob.webkitSlice){
+        return  blob.webkitSlice(startByte,endByte);
     }
     return null;
+}
+
+function loadProcess(width){
+    document.getElementById("uploadBar").setAttribute("style","width:"+width);
 }

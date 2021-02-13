@@ -10,4 +10,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class UploadService {
+    public boolean checkUploadFile(String uploadFileMD5) {
+        // 默认不存在
+        return false;
+    }
 }
