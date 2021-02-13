@@ -10,6 +10,10 @@
     <!--WebUploader-->
     <link rel="stylesheet" type="text/css" href="css/webuploader.css">
     <script type="text/javascript" src="js/webuploader.js"></script>
+    <!--layui框架-->
+    <link rel="stylesheet" href="./lib/layui/css/layui.css">
+    <script type="text/javascript" src="./lib/layui/layui.js" charset="utf-8"></script>
+
     <script type="text/javascript" src="js/uploaderTemplate.js"></script>
 </head>
 <body>
@@ -19,7 +23,14 @@
 <div id="uploader" class="wu-example">
     <!--用来存放文件信息-->
     <div id="thelist" class="uploader-list"></div>
-    <div id="uploadBar" class="progress-bar"></div>
+    <div>
+        <span>状态：</span>
+        <span id="uploadStatus">等待上传</span>
+        <div class="layui-progress  layui-progress-big">
+            <div id="uploadBar" class="layui-progress-bar layui-bg-blue" lay-percent="20%"></div>
+        </div>
+        <br>
+    </div>
     <div class="btns">
         <div id="picker">选择文件</div>
         <button id="startUpload" class="btn btn-default">开始上传</button>
@@ -29,5 +40,8 @@
 <script>
     // 逻辑统一放到js中
     init_uploader()
+    layui.use('element',function (){
+        var element = layui.element;
+    })
 </script>
 </html>

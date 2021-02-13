@@ -9,8 +9,77 @@ function init_uploader(){
 }
 
 function createUploader(){
+    // register需要放在new Uploader或者create之前
+    // 使用hook接口，返回Promise对象，WebUploader就会监听此异步操作结束
+    WebUploader.Uploader.register({
+        'before-send-file':'checkFileUploaded', // 分片前进行，此时还未分片
+        'before-send':'sendSlice' // 比on("uploadBeforeSend")早
+    },{
+        checkFileUploaded:function (file){
+            console.log("before-send-file")
+            var owner = this.owner; // 此uploader对象
+            var options = this.options; // webUploader的各种参数
+            var deferred = WebUploader.Deferred();
+            var uploadFile = file.source.getSource(); // 转换为file对象，file对象继承自blob
+            var md5Promise = calMD5(uploadFile) // MD5计算，返回Promise容器
+
+            md5Promise.then(function (md5) { // MD5计算完成
+                // MD5服务器校验
+                $.ajax({
+                    url:"checkUploadFile.ajax",
+                    type:"POST",
+                    sync:false,
+                    data:{
+                        uploadFileMD5:md5
+                    },
+                    success:function (result){
+                        // 文件在后台状态，仅记录状态
+                        options["formData"]["uploadFileMD5"] = md5;
+                        options["formData"]["uploadFileExists"] = result;
+                        options["formData"]["fileInfo"] = JSON.stringify(uploadFile);
+                        deferred.resolve();// 调用使得webuploader可以继续往下走
+                    },
+                    error:function (error){
+                        console.log(error)
+                    }
+                })
+            })
+            return deferred.promise(); //最后需要返回Promise
+        },
+
+        sendSlice:function (block){
+            console.log("register before send")
+            var options = this.options;
+            var deferred = WebUploader.Deferred();
+            var uploadFile = block.blob.getSource();
+            var md5Promise = calMD5(uploadFile) // MD5计算，返回Promise容器
+
+            md5Promise.then(function (md5){
+                // MD5服务器校验
+                $.ajax({
+                    url:"checkUploadFileSlice.ajax",
+                    type:"POST",
+                    sync:false,
+                    data:{
+                        uploadFileMD5:md5
+                    },
+                    success:function (result){
+                        options["formData"]["uploadFileSliceMD5"] = md5;
+                        options["formData"]["uploadFileSliceExists"] = result;
+                        deferred.resolve();// 调用使得webuploader可以继续往下走
+                    },
+                    error:function (error){
+                        console.log(error)
+                    }
+                })
+
+            })
+            return deferred.promise(); //最后需要返回Promise
+        }
+    })
+
     // 初始化容器
-    uploader = WebUploader.create({
+    uploader = new WebUploader.Uploader({
 
         // swf文件路径
         swf: '/js/datacloud/Uploader.swf',
@@ -27,7 +96,11 @@ function createUploader(){
         pick: '#picker',
 
         // 不压缩image, 默认如果是jpeg，文件上传前会压缩一把再上传！
-        resize: false
+        resize: false,
+        //
+        chunked:true,
+        chunkSize:5242880 //5M大小分片
+
     });
 
     // 当有文件被添加进队列时执行
@@ -40,85 +113,40 @@ function createUploader(){
     });
 
     // 文件上传过程中创建进度条实时显示。
-    uploader.on( 'uploadProgress', function( file, percentage ) {
-        // var $li = $( '#'+file.id ),
-        //     $percent = $li.find('.progress .progress-bar');
-        //
-        // // 避免重复创建
-        // if ( !$percent.length ) {
-        //     $percent = $('<div class="progress progress-striped active">' +
-        //         '<div class="progress-bar" role="progressbar" style="width: 0%">' +
-        //         '</div>' +
-        //         '</div>').appendTo( $li ).find('.progress-bar');
-        // }
-        //
-        // $li.find('p.state').text('上传中');
-        //
-        // $percent.css( 'width', percentage * 100 + '%' );
+    uploader.on('uploadProgress', function( file, percentage ) {
     });
 
-    // 上传前执行，此时还未分片
-    uploader.on('uploadStart',function (file){
-        alert("解析读取文件")
-        var fileMD5;
-        var uploadFile = file.source.getSource(); // 转换为file对象，file对象继承自blob
-        var md5Promise = calMD5(uploadFile);
-
-        md5Promise.then(function (md5) {
-            alert("执行")
-            fileMD5=md5;
-            // MD5校验
-            $.ajax({
-                url:"checkUploadFile.ajax",
-                type:"POST",
-                data:{
-                    uploadFileMD5:fileMD5
-                },
-                success:function (result){
-                    // 文件在后台状态，仅记录状态
-                    uploadFileStatus = result;
-                    uploadFileMD5= fileMD5;
-                },
-                error:function (error){
-                    alert(error)
-                },
-                complete:function (){
-                    alert("complete")
-                }
-            })
-
-        })
-    })
 
     // 大文件分片上传前设置,在uploadStart之后
     uploader.on('uploadBeforeSend',function (object, data, header){
-        alert("分片上传")
+        console.log("分片上传")
         // 计算分片的MD5值，传输完整性检验
-        var file = object.blob.source;//转换为blob对象
-        // var file = object;
-        var spark = new SparkMD5.ArrayBuffer();
-        var fileReader = new FileReader();
-        fileReader.readAsArrayBuffer(file)
-        fileReader.onload = function (e){
-            spark.append(e.target.result); // 导入二进制形式的文件内容
-            data["sliceMD5"] = spark.end();
-            data["uploadFileMD5"] = uploadFileMD5
+
+        if(data["uploadFileExists"] === "exists"){
+            // 前端显示
+            return false;
         }
+        if(data["uploadFileSliceExists"] === "exists"){
+            // 跳过分片
+            return true;
+        }
+        // 打包分片信息
+
     })
 
     // 上传成功时执行
     uploader.on('uploadSuccess', function( file ) {
-        alert("success")
+        console.log("success")
     });
 
     // 上传失败时执行
     uploader.on('uploadError', function( file ) {
-        alert("error")
+        console.log("error")
     });
 
     // 上传结束（不论成功失败）时执行
     uploader.on('uploadComplete', function( file ) {
-        alert("complete")
+        console.log("complete")
     });
 
     $("#startUpload").on('click', function () {
@@ -138,7 +166,7 @@ function createUploader(){
 
 function calMD5(file){ // 返回Promise对象
     return new Promise((resolve, reject) => {
-        let chunkSize = 1048576,                             // Read in chunks of 1MB
+        let chunkSize = 5242880,                             // Read in chunks of 5MB
             chunks = Math.ceil(file.size / chunkSize),
             currentChunk = 0,
             spark = new SparkMD5.ArrayBuffer(),
@@ -196,5 +224,6 @@ function blobSlice(blob,startByte,endByte){
 }
 
 function loadProcess(width){
-    document.getElementById("uploadBar").setAttribute("style","width:"+width);
+    document.getElementById("uploadStatus").innerHTML="文件解析中"+width*100 + "%";
+    document.getElementById("uploadBar").setAttribute("lay-percent",width*100 + "%");
 }
