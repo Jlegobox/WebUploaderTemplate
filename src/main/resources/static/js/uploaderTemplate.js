@@ -147,6 +147,19 @@ function createUploader(){
     // 上传结束（不论成功失败）时执行
     uploader.on('uploadComplete', function( file ) {
         console.log("complete")
+        $.ajax({
+            url:"doMergeFile.ajax",
+            type:"POST",
+            data:{
+                "uploadFileMD5":this.options["formData"]["uploadFileMD5"]
+            },
+            success:function (result){
+                console.log(result)
+            },
+            error:function (result){
+                console.log(result)
+            }
+        })
     });
 
     $("#startUpload").on('click', function () {

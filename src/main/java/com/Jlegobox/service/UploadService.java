@@ -1,6 +1,12 @@
 package com.Jlegobox.service;
 
+import com.Jlegobox.pojo.FileInfo;
+import com.Jlegobox.util.FileUtil;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.multipart.MultipartHttpServletRequest;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * @Author J
@@ -23,4 +29,19 @@ public class UploadService {
     }
 
 
+    public String doUploadFile(MultipartHttpServletRequest request) {
+        //获取上传的文件信息
+        FileInfo fileInfo = FileUtil.collectFileInfo(request);
+        MultipartFile file = request.getMultiFileMap().getFirst("file");
+        //储存文件信息
+        FileUtil.saveSlice(file,fileInfo);
+        return "success";
+    }
+
+    public String doMergeFile(HttpServletRequest request) {
+        FileInfo fileInfo = FileUtil.collectFileInfo(request);
+        String s = FileUtil.mergeFileSlice(fileInfo);
+
+        return s;
+    }
 }
