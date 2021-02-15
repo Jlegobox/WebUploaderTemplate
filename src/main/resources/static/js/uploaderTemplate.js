@@ -23,6 +23,8 @@ function createUploader(){
             var uploadFile = file.source.getSource(); // 转换为file对象，file对象继承自blob
             var md5Promise = calMD5(uploadFile) // MD5计算，返回Promise容器
 
+            $("#"+file.id+"Status").html("解析本地文件中...")
+
             md5Promise.then(function (md5) { // MD5计算完成
                 // MD5服务器校验
                 $.ajax({
@@ -33,17 +35,14 @@ function createUploader(){
                         "uploadFileMD5":md5
                     },
                     success:function (result){
+                        var fileInfo = {};
+                        fileInfo["uploadFileMD5"] = md5;
+                        fileInfo["uploadFileExists"] = result;
+                        file["fileInfo"]= fileInfo;
                         switch (result){
                             case "permit":{
                                 // 文件在后台状态，仅记录状态
                                 // options是全局文件，多线程情况下可能会造成并发
-                                var fileInfo = {};
-                                fileInfo["uploadFileMD5"] = md5;
-                                fileInfo["uploadFileExists"] = result;
-                                file["fileInfo"]= fileInfo;
-                                // options["formData"]["uploadFileMD5"] = md5;
-                                // options["formData"]["uploadFileExists"] = result;
-                                // options["formData"]["fileInfo"] = JSON.stringify(uploadFile);
                                 deferred.resolve();// 调用使得webuploader可以继续往下走
                                 break;
                             }
@@ -86,11 +85,11 @@ function createUploader(){
                         "chunk":block["chunk"]
                     },
                     success:function (result){
+                        fileInfo["uploadFileSliceMD5"] = md5;
+                        fileInfo["uploadFileSliceExists"] = result;
+                        block["fileInfo"] = fileInfo;
                         switch (result){
                             case "permit":{
-                                fileInfo["uploadFileSliceMD5"] = md5;
-                                fileInfo["uploadFileSliceExists"] = result;
-                                block["fileInfo"] = fileInfo;
                                 deferred.resolve();// 调用使得webuploader可以继续往下走
                                 break;
                             }
@@ -142,30 +141,36 @@ function createUploader(){
     // 当有文件被添加进队列时执行
     uploader.on( 'fileQueued', function( file ) {
         // 文件信息展示
-        $("#thelist").append( '<div id="' + file.id + '" class="item">' +
-            '<h4 class="info">' + file.name + '</h4>' +
-            '<p class="state">等待上传...</p>' +
-            '</div>' );
+        let uploadFileList = document.getElementById("uploadFileList");
+        let newTr = document.createElement('tr');
+        newTr.setAttribute('id',file.id);
+        let fileName = document.createElement('td');
+        fileName.innerHTML = file.name;
+        let fileSize = document.createElement('td');
+        fileSize.innerHTML = file.size
+        let fileStatus = document.createElement('td');
+        fileStatus.setAttribute('id',file.id + "Status");
+        fileStatus.innerHTML = "等待上传";
+        let uploadBar = document.createElement('td');
+        uploadBar.setAttribute('id',file.id + "uploadBar");
+        uploadBar.innerHTML = "0%";
+        newTr.appendChild(fileName)
+        newTr.appendChild(fileSize)
+        newTr.appendChild(fileStatus)
+        newTr.appendChild(uploadBar)
+        uploadFileList.appendChild(newTr)
     });
 
     // 文件上传过程中创建进度条实时显示。
     uploader.on('uploadProgress', function( file, percentage ) {
+        $("#"+file.id+"Status").html("上传中...")
+        $("#"+file.id+"uploadBar").html(percentage*100 + "%")
     });
 
 
     // 大文件分片上传前设置,在uploadStart之后
     uploader.on('uploadBeforeSend',function (object, data, header){
         console.log("分片上传")
-        // 计算分片的MD5值，传输完整性检验
-
-        if(data["uploadFileExists"] === "exists"){
-            // 前端显示
-            return false;
-        }
-        if(data["uploadFileSliceExists"] === "exists"){
-            // 跳过分片
-            return true;
-        }
         // 打包分片信息
         var fileInfo = object["fileInfo"];
         data["uploadFileMD5"] = fileInfo["uploadFileMD5"];
@@ -183,11 +188,21 @@ function createUploader(){
     // 上传失败时执行
     uploader.on('uploadError', function( file ) {
         console.log("error")
+        let fileInfo = file["fileInfo"]
+        if(fileInfo["uploadFileExists"] === "exists" || fileInfo["uploadFileSliceExists"] === "exists")
+            return true;
+        $("#"+file.id+"Status").html("服务器异常，上传失败")
     });
 
     // 上传结束（不论成功失败）时执行
     uploader.on('uploadComplete', function( file ) {
         console.log("complete")
+        let fileInfo = file["fileInfo"]
+        if(fileInfo["uploadFileExists"] === "exists" || fileInfo["uploadFileSliceExists"] === "exists") {
+            $("#"+file.id+"Status").html("上传完成")
+            $("#"+file.id+"uploadBar").html("100%")
+            return true;
+        }
         $.ajax({
             url:"doMergeFile.ajax",
             type:"POST",
@@ -195,6 +210,16 @@ function createUploader(){
                 "uploadFileMD5":file["fileInfo"]["uploadFileMD5"]
             },
             success:function (result){
+                switch (result){
+                    case "success":{
+                        $("#"+file.id+"Status").html("上传完成")
+                        break;
+                    }
+                    case "error":{
+                        $("#"+file.id+"Status").html("上传失败")
+                        break;
+                    }
+                }
                 console.log(result)
             },
             error:function (result){
@@ -229,7 +254,6 @@ function calMD5(file){ // 返回Promise对象
             console.log('read chunk nr', currentChunk + 1, 'of', chunks);
             spark.append(e.target.result);                   // Append array buffer
             currentChunk++;
-            loadProcess(currentChunk/chunks);
             if (currentChunk < chunks) {
                 loadNext();
             } else {
@@ -275,9 +299,4 @@ function blobSlice(blob,startByte,endByte){
         return  blob.webkitSlice(startByte,endByte);
     }
     return null;
-}
-
-function loadProcess(width){
-    document.getElementById("uploadStatus").innerHTML="文件解析中"+width*100 + "%";
-    document.getElementById("uploadBar").setAttribute("lay-percent",width*100 + "%");
 }
