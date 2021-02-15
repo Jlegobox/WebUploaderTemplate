@@ -129,7 +129,8 @@ function createUploader(){
         pick: '#picker',
 
         // 不压缩image, 默认如果是jpeg，文件上传前会压缩一把再上传！
-        resize: false,
+        // 默认为false，即压缩
+        resize: true,
         //
         chunked:true,
         chunkSize:5242880 //5M大小分片

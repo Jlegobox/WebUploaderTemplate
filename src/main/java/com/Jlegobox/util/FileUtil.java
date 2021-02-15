@@ -31,7 +31,7 @@ public class FileUtil {
      * @param path
      * @return
      */
-    private static boolean checkDirect(String path) {
+    private synchronized static boolean checkDirect(String path) {
         File file = new File(path);
         if (!file.exists() && !file.isDirectory()) {
             System.out.println("不存在文件路径:" + path);
@@ -50,7 +50,7 @@ public class FileUtil {
         fileInfo.setLastModifiedDate(request.getParameter("lastModifiedDate"));
         String chunks = request.getParameter("chunks");
         String chunk = request.getParameter("chunk");
-        fileInfo.setChunks(Integer.parseInt(chunks == null ? "0" : chunks));
+        fileInfo.setChunks(Integer.parseInt(chunks == null ? "1" : chunks)); // 至少一个分片
         fileInfo.setCurrentChunk(Integer.parseInt(chunk == null ? "0" : chunk));
         fileInfo.setMD5(request.getParameter("uploadFileMD5"));
         fileInfo.setCurrentChunkMD5(request.getParameter("uploadFileSliceMD5"));
@@ -110,7 +110,7 @@ public class FileUtil {
         return "success";
     }
 
-    private static boolean deleteFolder(File sliceDir) {
+    private synchronized static boolean  deleteFolder(File sliceDir) {
         if(sliceDir.exists()){
             if(sliceDir.isDirectory()){
                 File[] files = sliceDir.listFiles();
@@ -158,17 +158,17 @@ public class FileUtil {
                 }
                 fileInputStream = new FileInputStream(fileSlice).getChannel();
                 fileOutputStream.transferFrom(fileInputStream, fileOutputStream.size(), fileInputStream.size());
-                // 先关闭流再删除
+                // 先关闭流再删除,不然新new出来的fileOutputStream的流无法关闭，垃圾回收也回收不掉
                 fileInputStream.close();
-                fileSlice.delete();
+//                fileSlice.delete();
 
             }
         } finally {
-            if (fileOutputStream != null) {
-                fileOutputStream.close();
-            }
             if (fileInputStream != null) {
                 fileInputStream.close();
+            }
+            if (fileOutputStream != null) {
+                fileOutputStream.close();
             }
         }
 
@@ -222,7 +222,7 @@ public class FileUtil {
      * @param fileInfo
      * @return
      */
-    private static boolean checkFileInfo(FileInfo fileInfo) throws Exception {
+    private synchronized static boolean checkFileInfo(FileInfo fileInfo) throws Exception {
         File file = new File(FILE_REP + File.separator + fileInfo.getMD5() + File.separator + fileInfo.getMD5() + ".INFO");
         if (!file.exists()) { // 不存在，则储存
             createFileInfo(file, fileInfo);
@@ -239,7 +239,7 @@ public class FileUtil {
         return true;
     }
 
-    private static boolean createFileInfo(File file, FileInfo fileInfo) throws IOException {
+    private synchronized static boolean createFileInfo(File file, FileInfo fileInfo) throws IOException {
         if (!file.createNewFile()) {
             file.delete();
         }
@@ -261,7 +261,7 @@ public class FileUtil {
         return true;
     }
 
-    private static FileInfo getFileInfo(File file) throws Exception {
+    private synchronized static FileInfo getFileInfo(File file) throws Exception {
         FileInputStream fileInput = null;
         ObjectInputStream objectInput = null;
         FileInfo fileInfo = null;
@@ -270,11 +270,11 @@ public class FileUtil {
             objectInput = new ObjectInputStream(fileInput);
             fileInfo = (FileInfo) objectInput.readObject();
         } finally {
-            if (fileInput != null) {
-                fileInput.close();
-            }
             if (objectInput != null) {
                 objectInput.close();
+            }
+            if (fileInput != null) {
+                fileInput.close();
             }
         }
         return fileInfo;
