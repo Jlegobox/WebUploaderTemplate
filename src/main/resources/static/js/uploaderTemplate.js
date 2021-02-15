@@ -33,11 +33,27 @@ function createUploader(){
                         uploadFileMD5:md5
                     },
                     success:function (result){
-                        // 文件在后台状态，仅记录状态
-                        options["formData"]["uploadFileMD5"] = md5;
-                        options["formData"]["uploadFileExists"] = result;
-                        options["formData"]["fileInfo"] = JSON.stringify(uploadFile);
-                        deferred.resolve();// 调用使得webuploader可以继续往下走
+                        switch (result){
+                            case "permit":{
+                                // 文件在后台状态，仅记录状态
+                                // options是全局文件，多线程情况下可能会造成并发
+                                var fileInfo = {};
+                                fileInfo["uploadFileMD5"] = md5;
+                                fileInfo["uploadFileExists"] = result;
+                                file["fileInfo"]= fileInfo;
+                                // options["formData"]["uploadFileMD5"] = md5;
+                                // options["formData"]["uploadFileExists"] = result;
+                                // options["formData"]["fileInfo"] = JSON.stringify(uploadFile);
+                                deferred.resolve();// 调用使得webuploader可以继续往下走
+                                break;
+                            }
+                            case "exists":{
+                                // 跳过文件
+                                deferred.reject();
+                                break;
+                            }
+                        }
+
                     },
                     error:function (error){
                         console.log(error)
@@ -48,10 +64,14 @@ function createUploader(){
         },
 
         sendSlice:function (block){
+            // 保证在此分片上传前进行此命令处理且处理完成后才会上传。但是多线程情况会抢占共有属性例如options
             console.log("register before send")
             var options = this.options;
             var deferred = WebUploader.Deferred();
             var uploadFile = block.blob.getSource();
+            var fileInfo = {} // 使用新建fileInfo的方式避免引用
+            fileInfo["uploadFileMD5"] = block.file["fileInfo"]["uploadFileMD5"];
+            fileInfo["uploadFileExists"] = block.file["fileInfo"]["uploadFileExists"];
             var md5Promise = calMD5(uploadFile) // MD5计算，返回Promise容器
 
             md5Promise.then(function (md5){
@@ -64,9 +84,22 @@ function createUploader(){
                         uploadFileMD5:md5
                     },
                     success:function (result){
-                        options["formData"]["uploadFileSliceMD5"] = md5;
-                        options["formData"]["uploadFileSliceExists"] = result;
-                        deferred.resolve();// 调用使得webuploader可以继续往下走
+                        switch (result){
+                            case "permit":{
+                                fileInfo["uploadFileSliceMD5"] = md5;
+                                fileInfo["uploadFileSliceExists"] = result;
+                                block["fileInfo"] = fileInfo;
+                                deferred.resolve();// 调用使得webuploader可以继续往下走
+                                break;
+                            }
+                            case "exists":{
+                                deferred.reject();
+                                break;
+                            }
+                        }
+                        // options["formData"]["uploadFileSliceMD5"] = md5;
+                        // options["formData"]["uploadFileSliceExists"] = result;
+
                     },
                     error:function (error){
                         console.log(error)
@@ -131,6 +164,11 @@ function createUploader(){
             return true;
         }
         // 打包分片信息
+        var fileInfo = object["fileInfo"];
+        data["uploadFileMD5"] = fileInfo["uploadFileMD5"];
+        data["uploadFileExists"] = fileInfo["uploadFileExists"]
+        data["uploadFileSliceMD5"] = fileInfo["uploadFileSliceMD5"];
+        data["uploadFileSliceExists"] = fileInfo["uploadFileSliceExists"]
 
     })
 
@@ -151,7 +189,7 @@ function createUploader(){
             url:"doMergeFile.ajax",
             type:"POST",
             data:{
-                "uploadFileMD5":this.options["formData"]["uploadFileMD5"]
+                "uploadFileMD5":file["fileInfo"]["uploadFileMD5"]
             },
             success:function (result){
                 console.log(result)
