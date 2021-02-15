@@ -30,7 +30,7 @@ function createUploader(){
                     type:"POST",
                     sync:false,
                     data:{
-                        uploadFileMD5:md5
+                        "uploadFileMD5":md5
                     },
                     success:function (result){
                         switch (result){
@@ -81,7 +81,9 @@ function createUploader(){
                     type:"POST",
                     sync:false,
                     data:{
-                        uploadFileMD5:md5
+                        "uploadFileMD5":fileInfo["uploadFileMD5"],
+                        "uploadFileSliceMD5":md5,
+                        "chunk":block["chunk"]
                     },
                     success:function (result){
                         switch (result){

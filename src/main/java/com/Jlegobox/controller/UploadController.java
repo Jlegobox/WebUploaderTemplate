@@ -47,8 +47,10 @@ public class UploadController {
 
     // 文件切片的的MD5验证
     @RequestMapping("checkUploadFileSlice.ajax")
-    public String checkUploadFileSlice(@RequestParam("uploadFileMD5") String uploadFileMD5){
-        boolean existFlag =  uploadService.checkUploadFileSlice(uploadFileMD5);
+    public String checkUploadFileSlice(@RequestParam("uploadFileMD5") String uploadFileMD5,
+                                       @RequestParam("uploadFileSliceMD5") String uploadFileSliceMD5,
+                                       @RequestParam("chunk") int chunk){
+        boolean existFlag =  uploadService.checkUploadFileSlice(uploadFileMD5,uploadFileSliceMD5,chunk);
         if(existFlag){
             return "exists";
         }

@@ -76,6 +76,7 @@ public class FileUtil {
         // 要储存的位置
         File file = new File(DirPath + File.separator + fileInfo.getCurrentChunk() + ".slice");
         try {
+            file.createNewFile();
             uploadFile.transferTo(file);
             String savedMD5 = MD5Util.calMD5(file);
             if (savedMD5 == null || !savedMD5.equals(fileInfo.getCurrentChunkMD5())) {
@@ -92,10 +93,8 @@ public class FileUtil {
 
     public static String mergeFileSlice(FileInfo fileInfo) {
         File file = new File(FILE_REP + File.separator + fileInfo.getMD5() + ".block");
-        if (file.exists()) {// todo 通过验证MD5值保证不是错误文件而是已上传完成的文件
-            return "exists";
-        }
         try {
+            file.createNewFile();
             String slicePath = FILE_REP + File.separator + fileInfo.getMD5();
             File sliceDir = new File(slicePath);
             if (sliceDir.exists() && sliceDir.isDirectory()) {
@@ -146,7 +145,7 @@ public class FileUtil {
         FileChannel fileOutputStream = null;
         FileChannel fileInputStream = null;
         try {
-            fileOutputStream = new FileOutputStream(file).getChannel();
+            fileOutputStream = new FileOutputStream(file).getChannel(); // 如果file存在，会导致file被清空（覆盖重写）。想要追加，可以使用追加的方式
             slicePath = slicePath + File.separator;
             int chunks = fileInfo.getChunks();
             for (int i = 0; i < chunks; i++) {
@@ -278,5 +277,30 @@ public class FileUtil {
             }
         }
         return fileInfo;
+    }
+
+
+    /**
+     * 返回文件系统中，传入MD5代表的文件
+     * @param uploadFileMD5
+     * @return
+     */
+    public static File getFileByMD5(String uploadFileMD5) {
+        File file = new File(FILE_REP + File.separator + uploadFileMD5 + ".block");
+        if(file.exists())
+            return file;
+        return null;
+    }
+
+    /**
+     * 返回的是分片所在文件夹
+     * @param uploadFileMD5
+     * @return
+     */
+    public static File getFileSliceByMD5(String uploadFileMD5) {
+        File file = new File(FILE_REP + File.separator + uploadFileMD5);
+        if(file.exists() && file.isDirectory())
+            return file;
+        return null;
     }
 }
