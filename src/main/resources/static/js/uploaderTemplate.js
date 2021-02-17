@@ -122,16 +122,14 @@ function createUploader(){
         server: 'doUploadFile.ajax',
 
         formData:{
-            // "current_location":current_location
         },
 
         // 选择文件的按钮。可选。
         // 内部根据当前运行是创建，可能是input元素，也可能是flash.
         pick: '#picker',
 
-        // 不压缩image, 默认如果是jpeg，文件上传前会压缩一把再上传！
-        // 默认为false，即压缩
-        resize: true,
+        // 不压缩image
+        compress: false,
         //
         chunked:true,
         chunkSize:5242880 //5M大小分片
@@ -278,11 +276,6 @@ function calMD5(file){ // 返回Promise对象
         loadNext();
     });
 }
-
-// 上传文件切片,兼容不同的浏览器
-// function blobSlice(blob, startByte, endByte) { // 返回的blobSlice.call(file,start,end)中file必须为blob而不能是File
-//     return blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice;
-// }
 
 function blobSlice(blob,startByte,endByte){
     // 使用这个函数，根据传入的blob，可以兼容传入的blob是File类型的情况
