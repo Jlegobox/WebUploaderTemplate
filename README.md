@@ -249,6 +249,11 @@ service：UploaderService.java 定义了各种处理逻辑
 - 约定了一些指令，例如"permit"，"exists"等来和前端进行交互
 - 定义了FileInfo对象用于保存前端传送而来的文件信息。并在FileUtil中定义了根据request创建FileInfo对象的方法。不存在的对象属性保存为默认值。
 - 上传的文件分片保存到一个以完整文件MD5值命名的文件夹中。其中还保存了一个`MD5值.INFO`文件。此文件为FileInfo对象的持久化对象，储存了该上传中文件的上传状态和各分片状态。最后合并时会利用保存的分片MD5值进行再次验证。
+- 默认的multipart大小最大为1M。根据需求可以再`application.properties`中修改
+```properties
+# 设置单个request中携带的multipart大小
+spring.servlet.multipart.max-file-size = 10485760
+spring.servlet.multipart.max-request-size=100MB
 
 
 
